@@ -2,6 +2,16 @@ import tkinter as tk
 import json
 import random
 
+def convert(char):
+    if char in ['w','W']:
+        return 'Up'
+    elif char in ['s','S']:
+        return 'Down'
+    elif char in ['d','D']:
+        return 'Right'
+    elif char in ['a','A']:
+        return 'Left'
+
 class snake:
     def __init__(self,root):
         try:
@@ -15,13 +25,15 @@ class snake:
         self.root.config(bg='black')
         
         self.pos_1 = [67+15*i for i in range(5)]
-        self.tick_speed = 400
-        self.last_pressed = ''
+        self.perm_tick_speed = 100 #minimum is 2 before it breaks
+        self.tick_speed = self.perm_tick_speed
+        self.last_pressed = 'w'
         self.start = False #so snake doesnt speed up when pressing space
         self.die = False #for changing text
         self.apple_eaten = 0
 
-        self.label_main = tk.Label(self.root,text='PRESS SPACE TO START',font=('Comic Sans MS','20','bold'),
+        self.label_main = tk.Label(self.root,text=f'PRESS SPACE TO START',
+                                   font=('Comic Sans MS','20','bold'),
                                    bg='black',fg='white') ; self.label_main.pack()
 
         self.btn_msg_1 = tk.Button(self.root,text='',font=('Comic Sans MS','15','bold'),
@@ -32,6 +44,9 @@ class snake:
                                    bg='black',fg='white',relief='flat') ; self.btn_msg_3.pack()
         self.btn_msg_4 = tk.Button(self.root,text='',font=('Comic Sans MS','15','bold'),
                                    bg='black',fg='white',relief='flat') ; self.btn_msg_4.pack()
+        self.btn_msg_5 = tk.Button(self.root,text=f'Current Key : {convert(self.last_pressed)}',font=('Comic Sans MS','15','bold'),
+                                   bg='black',fg='white',relief='flat') ; self.btn_msg_5.pack()
+        self.btn_msg_5.place(x=450,y=560)
 
         self.root.bind('<Key>',self.change_key)
         self.root.bind('<Button-1>',lambda e:print(e))
@@ -47,12 +62,13 @@ class snake:
     def change_key(self,event):
         if event.char in ['w','a','s','d','W','A','S','D']:
             self.last_pressed = event.char.lower()
+            self.btn_msg_5.config(text=f'Current Key : {convert(self.last_pressed)}')
 
         elif event.keysym in ['Up','Down','Left','Right']:
             self.last_pressed = event.keysym
+            self.btn_msg_5.config(text=f'Current Key : {self.last_pressed}')
 
         elif event.char == ' ' and self.start == False: #to start game press space
-            self.last_pressed = 'w'
             self.start = True
             self.move(self.last_pressed) #actually starts game
 
@@ -96,8 +112,8 @@ class snake:
 
     def move(self,event):
         try: # this is for hitting the top and bottom giving list error
-            self.label_main.config(text='')
             if self.die == False:
+                self.label_main.config(text='')
                 self.btn_msg_1.config(text=f'Length of Snake: {len(self.pos_1)}')
                 self.btn_msg_2.config(text=f'Score: {self.apple_eaten}')
                 self.btn_msg_3.config(text=f'Highest Score: {self.data}')
@@ -106,18 +122,7 @@ class snake:
                 self.btn_msg_1.place(x=80,y=25)
                 self.btn_msg_2.place(x=300,y=25)
                 self.btn_msg_3.place(x=420,y=25)
-                self.btn_msg_4.place(x=290,y=550)
-            elif self.die == True:
-                self.label_main.config(text='You Died')
-                self.btn_msg_1.config(text='')
-                self.btn_msg_2.config(text='')
-                self.btn_msg_3.config(text='')
-                self.btn_msg_4.config(text='')
-
-                self.btn_msg_1.place(x=0,y=0) #cause it gives black spot on main label
-                self.btn_msg_2.place(x=0,y=0)
-                self.btn_msg_3.place(x=0,y=0)
-                self.btn_msg_4.place(x=0,y=0)
+                self.btn_msg_4.place(x=130,y=560)
 
             if event == 'a' or event == 'Left': #left
                 self.pos_1.insert(0,self.pos_1[0]-1) #assigns new position for head
@@ -145,17 +150,14 @@ class snake:
             self.die_check()
             self.apple_check()
 
-        except:
-            self.label_main.config(text='You Died')
-            self.btn_msg_1.config(text='')
-            self.btn_msg_2.config(text='')
-            self.btn_msg_3.config(text='')
-            self.btn_msg_4.config(text='')
+        except Exception as e: #idk it freezes every time it does this :/ but || this is for infinite up and down
+            if self.pos_1[0] in [i-15 for i in range(0,15)]: #this is if it goes over top
+                self.pos_1[0]+=180
 
-            self.btn_msg_1.place(x=0,y=0)
-            self.btn_msg_2.place(x=0,y=0)
-            self.btn_msg_3.place(x=0,y=0)
-            self.btn_msg_4.place(x=0,y=0)
+            elif self.pos_1[0] in [i+15 for i in range(165,180)]:#this is if it goes over bottom
+                self.pos_1[0]-=180
+                
+            self.root.after(self.tick_speed,lambda:self.move(self.last_pressed))
     
     def apple_check(self): #this is for scores and making the body bigger
         if self.apple_pos == self.pos_1[0]:
@@ -168,16 +170,47 @@ class snake:
                 except: ... #does nothing in except
             self.make_apple() #remakes everything gives it a cool white flash vfx
 
-            if self.apple_eaten%5 == 0:
-                if self.tick_speed > 50:
-                    self.tick_speed-=50
+            if self.apple_eaten%1 == 0:
+                if self.tick_speed != 1:
+                    self.tick_speed-=1
 
     def die_check(self):
         if self.pos_1[0] in self.pos_1[1:]: #if head is in body
             self.die = True
             self.last_pressed = 'q'
+            self.root.unbind('<Key>')
+
+            self.label_main.config(text='YOU DIED PRESS SPACE TO RESTART')
+            self.btn_msg_1.config(text='')
+            self.btn_msg_2.config(text='')
+            self.btn_msg_3.config(text='')
+            self.btn_msg_4.config(text='')
+
+            self.btn_msg_1.place(x=0,y=0) #cause it gives black spot on main label
+            self.btn_msg_2.place(x=0,y=0)
+            self.btn_msg_3.place(x=0,y=0)
+            self.btn_msg_4.place(x=0,y=0)
+
             for i in self.btn_pos_dict:
                 self.btn_pos_dict[i].config(state='disabled')
+
+            self.root.bind('<Key>',lambda e:self.restart(e))
+
+    def restart(self,event):
+        if event.char == ' ':
+            self.die = False
+            self.start = False
+            self.last_pressed = 'w'
+            self.root.bind('<Key>',self.change_key)
+            self.pos_1 = [67+15*i for i in range(5)]
+            self.tick_speed = self.perm_tick_speed
+            self.apple_eaten = 0
+            self.label_main.config(text='PRESS SPACE TO START')
+
+            for i in self.btn_pos_dict:
+                self.btn_pos_dict[i].config(state='normal')
+
+            self.make_apple()
 
 if __name__ == '__main__':
     root = tk.Tk()
