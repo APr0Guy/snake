@@ -99,7 +99,7 @@ class snake:
                 self.btn_pos_dict[i].config(bg='#1C1F2A',fg='#1C1F2A') #make everything black
             else:
                 self.btn_pos_dict[i].config(bg="#0F0F14",fg='#0F0F14')
-            
+
         for i in self.pos_1:
             self.btn_pos_dict[i].config(bg='#168211',fg="#168211") #make things in list green//body
             
