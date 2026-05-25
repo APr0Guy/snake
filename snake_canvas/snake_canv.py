@@ -1,14 +1,9 @@
 import tkinter as tk
+import random
 
 def convert(char):
-    if char in ['w','W']:
-        return 'Up'
-    elif char in ['s','S']:
-        return 'Down'
-    elif char in ['d','D']:
-        return 'Right'
-    elif char in ['a','A']:
-        return 'Left'
+    char_dict = {'w':'Up','W':'Up','s':'Down','S':'Down','d':'Right','D':'Right','a':'Left','A':'Left'}
+    return char_dict.get(char,char)
 
 class snake_canv:
     def __init__(self,root,game_values):
@@ -27,14 +22,15 @@ class snake_canv:
         self.grid_loc_reverse = {} #stores every grids id along with their position (x,y)
 
         self.lab = tk.Label(self.root, #for testing
-                            text=f"Cell Size: {self.game_values['cell_size']}\ngame_values['row'],game_values['column']: {self.game_values['row'],self.game_values['column']}\nSize of Frame/Canvas: {self.game_values['row']*self.game_values['cell_size'],self.game_values['column']*self.game_values['cell_size']}\nSize of window: {(self.game_values['row']+2)*self.game_values['cell_size'],(self.game_values['column']+2)*self.game_values['cell_size']}",
+                            text=f"Cell Size: {self.game_values['cell_size']}\nRow,Column : {self.game_values['row'],self.game_values['column']}\nSize of Frame/Canvas: {self.game_values['row']*self.game_values['cell_size'],self.game_values['column']*self.game_values['cell_size']}\nSize of window: {(self.game_values['row']+2)*self.game_values['cell_size'],(self.game_values['column']+2)*self.game_values['cell_size']}",
                             fg='black') ; self.lab.pack()
 
         self.make() #makes grid for game
+        self.make_apple() #makes apple
 
         self.last_pressed = 'Up'
         self.root.bind('<Key>',self.change_key)
-    
+
     def change_key(self,event):
         opp = {'Up':'Down','Down':'Up','Left':'Right','Right':'Left'}
         current_pressed = self.last_pressed #for checking if new event is not opposite to old so you die immediately
@@ -79,7 +75,7 @@ class snake_canv:
 
         #for getting heads location
         head_x , head_y = self.game_values['row']//2*self.game_values['cell_size'] , self.game_values['column']//2*self.game_values['cell_size'] #get coord of head position in center of board
-        head_grid_no = int(''.join([str(i) for i in self.grid_loc if self.grid_loc[i] == (head_x,head_y)]))
+        head_grid_no = self.grid_loc_reverse[(head_x,head_y)]
         # ^^ gets index of head then converts it into a number;first changes into string then into int
 
         for i in range(self.game_values['snake_size']): #runs till body size
@@ -94,6 +90,20 @@ class snake_canv:
                 self.canvas.create_oval(self.canvas.bbox(self.grid_loc_reverse[item]),fill='#175e13',tag = 'snake_body')
             else: #colors body
                 self.canvas.create_oval(self.canvas.bbox(self.grid_loc_reverse[item]),fill='#168211',tag = 'snake_body')
+    
+    def make_apple(self):
+        self.canvas.delete('apple')
+        x = random.randrange(0 , (self.game_values['row']  *self.game_values['cell_size']) , self.game_values['cell_size'])
+        y = random.randrange(0 , (self.game_values['column'] * self.game_values['cell_size']) , self.game_values['cell_size'])
+
+        while (x,y) in self.body_pos: #repeats this function as long as apples position exists inside snakes body
+            x = random.randrange(0 , (self.game_values['row']  *self.game_values['cell_size']) , self.game_values['cell_size'])
+            y = random.randrange(0 , (self.game_values['column'] * self.game_values['cell_size']) , self.game_values['cell_size'])
+
+        self.apple_pos_main = (x,y,x+self.game_values['cell_size'],y+self.game_values['cell_size']) #this is for making apple shape
+        self.apple_pos = (x,y) #apple position to compare
+
+        self.canvas.create_oval(self.apple_pos_main,tag='apple',fill="#C11B1B")
 
     def move(self,event):
         x,y = self.body_pos[0]
@@ -107,47 +117,16 @@ class snake_canv:
             elif event == 'Right':
                 self.body_pos.insert(0,(x+self.game_values['cell_size'],y))
 
-            self.body_pos.pop() #removes last item (tail)
+            if self.body_pos[0] != self.apple_pos:
+                self.body_pos.pop() #removes last item (tail) if apple is not eaten
+            else:
+                self.make_apple() #if apple is eaten remake the apple in different position
 
             #this is for checking if dead and remaking body
             self.die_check()
             self.remake_body()
 
             self.root.after(self.tick_speed,lambda :self.move(self.last_pressed))
-
-    def die_check(self):
-        if self.body_pos[0] in self.body_pos[1:]: #checks if head collides with body
-            self.game_state['die'] = True #sets snake to dead
-            if self.game_values['mode'] in ['normal','n']: #condition for dying in normal mode
-                ...
-            elif self.game_values['mode'] in ['infinite','i']: #condition for dynig in infinite mode
-                ...
-            self.game_over()
-
-    def game_over(self,event=None):
-        if event == None: #when game is first over
-            print('You died')
-            self.root.unbind('<Key>') #to remove changing keys from keybind
-            self.root.bind('<Key>',lambda event:self.game_over(event))
-
-        else: #when user presses key
-            if event.char == ' ': #if user presses spacebar activates restart function
-                self.restart()
-                self.root.unbind('<Key>')
-    
-    def restart(self):
-        #sets every function to default
-        self.game_state = {'start':False,'die':False}
-
-        #remakes body position to default
-        self.body_pos = []
-
-        head_x , head_y = self.game_values['row']//2*self.game_values['cell_size'] , self.game_values['column']//2*self.game_values['cell_size']
-        head_grid_no = int(''.join([str(i) for i in self.grid_loc if self.grid_loc[i] == (head_x,head_y)]))
-
-        for i in range(self.snake_size):
-            self.body_pos.append(head_grid_no)
-            head_grid_no += self.game_values['row']
 
     def remake_body(self):
         #die check
@@ -193,7 +172,6 @@ class snake_canv:
                 elif self.body_pos[0][0] == left[0]: #this is if it goes over left border
                     y = self.body_pos[0][1]
                     x = self.body_pos[0][0] + self.game_values['row']*self.game_values['cell_size'] #makes new coords for head
-                    
 
                     del self.body_pos [0] #deletes old coords
                     self.body_pos.insert(0,(x,y)) #inserts new coords in place of head
@@ -207,15 +185,46 @@ class snake_canv:
 
                 self.remake_body()
 
+    def die_check(self):
+        if self.body_pos[0] in self.body_pos[1:]: #checks if head collides with body
+            self.game_state['die'] = True #sets snake to dead
+            self.game_over()
+
+    def game_over(self,event=None):
+        if event == None: #when game is first over
+            print('You died')
+            self.root.unbind('<Key>') #to remove changing keys from keybind
+            self.root.bind('<Key>',lambda event:self.game_over(event))
+
+        else: #when user presses key
+            if event.char == ' ': #if user presses spacebar activates restart function
+                self.restart()
+                self.root.unbind('<Key>')
+    
+    def restart(self):
+        #sets every function to default
+        self.game_state = {'start':False,'die':False}
+
+        #remakes body position to default
+        self.body_pos = []
+
+        head_x , head_y = self.game_values['row']//2*self.game_values['cell_size'] , self.game_values['column']//2*self.game_values['cell_size']
+        head_grid_no = self.grid_loc_reverse[(head_x,head_y)]
+
+        for i in range(self.snake_size):
+            self.body_pos.append(head_grid_no)
+            head_grid_no += self.game_values['row']
+
 if __name__ == '__main__': #this only makes snake run on this file so this wont affect menu
     game_values = {'cell_size': int(input('Cell Size: ')) , 'row': int(input('Row: ')), 'column': int(input('Column: ')), 'snake_size': int(input('Size of snake (when starting): ')), 'mode': input('Gamemode (normal[n]/infinite[i]): ').lower()}
 
-    #game_values = {'cell_size': 40 , 'row': 15, 'column': 12, 'snake_size': 5, 'mode': 'i'}
+    #game_values = {'cell_size': 40 , 'row': 15, 'column': 12, 'snake_size': 4, 'mode': 'i'}
 
     if game_values['row']%2 == 0: #if game_values['row'] is even no the checkerboard wont appear
         game_values['row']+=1
 
     root = tk.Tk()
+    root.focus_force() #puts focus in the game window once done typing inputs
     root.geometry(f"{(game_values['row']+2)*game_values['cell_size']}x{(game_values['column']+3)*game_values['cell_size']}") #changes geomerty based on input
     root.title('SNAKE_W_CANV')
     snake_canv(root,game_values)
